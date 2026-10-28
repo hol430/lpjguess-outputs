@@ -1,0 +1,19 @@
+Package: lpjguessOutput
+Title: LPJ-GUESS Output Reader and Visualiser
+Version: 0.0.1
+Authors@R: person("Drew", "Holzworth", role = c("aut", "cre"),
+                  email = "d.holzworth@westernsydney.edu.au")
+Author: Drew Holzworth [aut, cre]
+Description: A package to read and visualise LPJ-GUESS output files.
+License: GPL-3
+Encoding: UTF-8
+Imports:
+    data.table,
+    ggplot2
+Suggests:
+    testthat,
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.0
+VignetteBuilder: knitr
