@@ -92,7 +92,7 @@ add_pft_output("file_dave_aboveground_nmass", "Above-Ground N Mass", "Above-Grou
 add_pft_output("file_dave_belowground_nmass", "Below-Ground N Mass", "Below-Ground Nitrogen Biomass", "kgN/m2", "patch", "daily")
 add_pft_output("file_dave_aboveground_tree_biomass", "Above-Ground Tree Biomass", "Above-Ground Tree Biomass", "kg/m2", "patch", "daily")
 add_pft_output("file_dave_live_biomass", "Live Biomass", "Live Biomass", "kg/m2", "patch", "daily")
-add_pft_output("file_dave_indiv_npp", "NPP", "Net Primary Productivity", "gC/m2/day", "patch", "daily")
+add_pft_output("file_dave_pft_npp", "NPP", "Net Primary Productivity", "gC/m2/day", "patch", "daily")
 add_pft_output("file_dave_sla", "SLA", "Specific Leaf Area", "m2/kgC", "patch", "daily")
 add_pft_output("file_dave_cmass_leaf", "Leaf C Mass", "Green Leaf Carbon Mass", "kgC/m2", "patch", "daily")
 add_pft_output("file_dave_cmass_leaf_brown", "Brown Leaf C Mass", "Brown Leaf Carbon Mass", "kgC/m2", "patch", "daily")
@@ -116,7 +116,7 @@ add_pft_output("file_dave_density", "Density", "Tree Density", "/m2", "patch", "
 add_pft_output("file_dave_sapwood_area", "Sapwood Area", "Sapwood Area", "m2", "patch", "daily")
 add_pft_output("file_dave_latosa", "LA:SA", "Leaf Area to Sapwood Area Ratio", "", "patch", "daily")
 add_pft_output("file_dave_fpar", "FPAR", "Fraction of Absorbed PAR", "0-1", "patch", "daily")
-add_pft_output("file_dave_indiv_gpp", "GPP", "Gross Primary Productivity", "gC/m2/day", "patch", "daily")
+add_pft_output("file_dave_pft_gpp", "GPP", "Gross Primary Productivity", "gC/m2/day", "patch", "daily")
 add_pft_output("file_dave_resp_autotrophic", "Autotrophic Respiration", "Autotrophic Respiration", "gC/m2/day", "patch", "daily")
 add_pft_output("file_dave_resp_maintenance", "Maintenance Respiration", "Maintenance Respiration", "gC/m2/day", "patch", "daily")
 add_pft_output("file_dave_resp_growth", "Growth Respiration", "Growth Respiration", "gC/m2/day", "patch", "daily")
@@ -237,7 +237,34 @@ add_pft_output("file_dave_Rs_r", "Rs R", "Rs R", "", "patch", "daily")
 add_pft_output("file_dave_soil_nh4_mass", "Soil Nh4 Mass", "Soil Nh4 Mass", "", "patch", "daily")
 add_pft_output("file_dave_soil_no3_mass", "Soil No3 Mass", "Soil No3 Mass", "", "patch", "daily")
 add_pft_output("file_dave_soil_psi", "Soil Psi", "Soil Psi", "", "patch", "daily")
-add_pft_output("file_dave_soil_psi_layer", "Soil Psi Layer", "Soil Psi Layer", "", "patch", "daily")
+.SOIL_LAYER_OUTPUTS <- c("dave_soil_state", "dave_soil_properties")
+
+.soil_layer_index <- function(layer) {
+    index <- suppressWarnings(as.integer(layer))
+    if (is.na(index) || index < 0 ||
+            as.character(index) != as.character(layer)) {
+        return(NA_integer_)
+    }
+    index
+}
+
+.soil_layer_number <- function(layer) {
+    index <- .soil_layer_index(layer)
+    if (is.na(index)) paste("Layer", layer) else paste("Layer", index + 1L)
+}
+
+.soil_layer_label <- function(layer, top_mm, bottom_mm) {
+    index <- .soil_layer_index(layer)
+    if (is.na(index)) {
+        return(paste("Layer", layer))
+    }
+    paste0("Layer ", index + 1L, " (", top_mm / 10, "-",
+           bottom_mm / 10, " cm)")
+}
+
+add_output_dynamic("file_dave_soil_psi_layer", "Soil Psi Layer", "Soil Psi Layer", "MPa", "patch", "daily", function(layer) {
+    .soil_layer_number(sub("^soil_psi", "", layer))
+})
 add_pft_output("file_dave_soiltemp25", "Soiltemp25", "Soiltemp25", "", "patch", "daily")
 add_pft_output("file_dave_sompool_decay_reduction", "Sompool Decay Reduction", "Sompool Decay Reduction", "", "patch", "daily")
 add_pft_output("file_dave_sompool_frac_remaining", "Sompool Frac Remaining", "Sompool Frac Remaining", "", "patch", "daily")
@@ -262,6 +289,124 @@ add_pft_output("file_dave_water_uptake", "Water Uptake", "Water Uptake", "", "pa
 add_pft_output("file_dave_wcont_upper", "Wcont Upper", "Wcont Upper", "", "patch", "daily")
 add_pft_output("file_dave_weighted_psi", "Weighted Psi", "Weighted Psi", "", "patch", "daily")
 
+# Tall patch outputs.
+add_output_static("file_dave_soil_state", "Soil", "Soil State", "", c(
+    "wmass" = "mm",
+    "wmass_sc" = "mm",
+    "awcont" = "0-1",
+    "imass" = "mm",
+    "Psi" = "mm",
+    "dPsidw" = "mm",
+    "Psi_max" = "mm",
+    "Kw" = "mm/s",
+    "Kw_max" = "mm/s",
+    "runoff_baseflow" = "mm/day",
+    "Kh" = "W/m/K",
+    "Ch" = "J/m3/K",
+    "temp" = "°C",
+    "temp_old" = "°C",
+    "gtemp" = "-",
+    "alag" = "-",
+    "exp_alag" = "-",
+    "CO2" = "gC",
+    "CH4" = "gC",
+    "CH4_ebull_ind" = "gC",
+    "CH4_gas" = "gC",
+    "CH4_diss" = "gC",
+    "O2" = "mol",
+    "respsum" = "kgC/m2/day",
+    "arespsum" = "kgC/m2/year",
+    "cpool_slow" = "kgC/m2",
+    "cpool_fast" = "kgC/m2",
+    "decomp_litter_mean" = "kgC/m2/year",
+    "k_soilfast_mean" = "1/year",
+    "k_soilslow_mean" = "1/year",
+    "anmin" = "kgN/m2/year",
+    "animmob" = "kgN/m2/year",
+    "aminleach" = "kgN/m2/year",
+    "aorgNleach" = "kgN/m2/year",
+    "aorgCleach" = "kgC/m2/year",
+    "labile_carbon" = "kgC/m2/day",
+    "socage" = "years",
+    "NH4_mass" = "kgN/m2",
+    "NO3_mass" = "kgN/m2",
+    "NO2_mass" = "kgN/m2",
+    "NO_mass" = "kgN/m2",
+    "N2O_mass" = "kgN/m2",
+    "N2_mass" = "kgN/m2",
+    "psi_mpa" = "MPa",
+    "k_actual" = "m/s",
+    "nvol" = "kgN/m2/day",
+    "anvol" = "kgN/m2/year",
+    "nloss_gas" = "kgN/m2/day",
+    "anloss_gas" = "kgN/m2/year",
+    "atemp_mod" = "-",
+    "amoist_mod" = "-",
+    "atot_mod" = "-",
+    "orgleachfrac" = "0-1"
+), "patch", "daily")
+
+add_output_static("file_dave_soil_properties", "Soil Properties", "Soil Properties", "", c(
+    "thickness" = "mm",
+    "depth_mid" = "mm",
+    "depth_bot" = "mm",
+    "sand_frac" = "0-1",
+    "clay_frac" = "0-1",
+    "silt_frac" = "0-1",
+    "coarse_frac" = "0-1",
+    "ph" = "pH",
+    "wsats" = "mm",
+    "awc" = "mm",
+    "wp" = "mm",
+    "b" = "-",
+    "perc_exp" = "-",
+    "perc_mass" = "mm/day",
+    "perc_base" = "mm/day",
+    "perc_base_min" = "mm/day",
+    "perc_base_org" = "mm/day",
+    "awc_min" = "0-1",
+    "wp_min" = "0-1",
+    "wsats_min" = "0-1",
+    "b_min" = "-",
+    "Kw_max_min" = "mm/s",
+    "Psi_max_min" = "mm",
+    "awc_rock" = "0-1",
+    "wp_rock" = "0-1",
+    "wsats_rock" = "0-1",
+    "b_rock" = "-",
+    "Kw_max_rock" = "mm/s",
+    "Psi_max_rock" = "mm",
+    "root_volume" = "mm",
+    "mineral_volume" = "mm",
+    "coarse_volume" = "mm",
+    "organic_volume" = "mm",
+    "effective_volume" = "mm",
+    "ssa" = "m2/g",
+    "bulk_density" = "g/cm3",
+    "rho_org" = "kgC/m3",
+    "awc_org" = "0-1",
+    "wp_org" = "0-1",
+    "wsats_org" = "0-1",
+    "b_org" = "-",
+    "Psi_max_org" = "mm",
+    "Kw_max_org" = "mm/s",
+    "peat_frac" = "0-1",
+    "acrotelm" = "0-1",
+    "catotelm" = "0-1",
+    "tiller_area" = "m2/m2",
+    "thermdiff_0" = "mm2/s",
+    "thermdiff_15" = "mm2/s",
+    "thermdiff_100" = "mm2/s",
+    "thermdiff_0_min" = "mm2/s",
+    "thermdiff_15_min" = "mm2/s",
+    "thermdiff_100_min" = "mm2/s",
+    "thermdiff_0_org" = "mm2/s",
+    "thermdiff_15_org" = "mm2/s",
+    "thermdiff_100_org" = "mm2/s",
+    "Cp_min" = "J/m3/K",
+    "depth_mod" = "-",
+    "a" = "-"
+), "patch", "daily")
 
 # These aren't really PFT outputs, but they have dynamic column names
 # (one column per timestep). Therefore, for now I'm treating them as
@@ -289,6 +434,8 @@ add_output_static("file_dave_indiv_mort", "Mortality", "Mortality Fractions", "0
 # Daily individual-level outputs.
 add_output_static("file_dave_indiv_cpool", "C Pools", "Vegetation Carbon Pools", "kgC/m2", c("cmass_leaf", "cmass_root", "cmass_crown", "cmass_sap", "cmass_heart", "cmass_repr", "cmass_storage"), "individual", "daily")
 add_output_static("file_dave_indiv_npool", "N Pools", "Vegetation Nitrogen Pools", "kgN/m2", c("nmass_leaf", "nmass_root", "nmass_crown", "nmass_sap", "nmass_heart", "nmass_repr", "nmass_storage"), "individual", "daily")
+add_output_static("file_dave_indiv_npp", "NPP", "Net Primary Productivity", "kgC/m2/day", c("npp"), "individual", "daily")
+add_output_static("file_dave_indiv_gpp", "GPP", "Gross Primary Productivity", "kgC/m2/day", c("gpp"), "individual", "daily")
 add_output_static("file_dave_indiv_lai", "LAI", "Leaf Area Index", "m2/m2", c("lai"), "individual", "daily")
 add_output_static("file_dave_hydraulics", "Hydraulics", "Hydraulics Diagnostics", "", c("kmax", "lai", "minimum_lwp"), "individual", "daily")
 add_output_static("file_dave_indiv_alpha_leaf", "Alpha Leaf", "Leaf Sink Strength", "0-1", c("alpha_leaf"), "individual", "daily")

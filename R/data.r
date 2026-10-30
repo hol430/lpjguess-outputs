@@ -30,25 +30,33 @@
     return(out_file)
 }
 
-.identity_cols <- c("Lon", "Lat", "Year", "Day", "timestep", "stand", "patch",
-                    "pft", "indiv")
+.identity_cols <- c("Lon", "Lat", "Year", "Day", "timestep", "Date", "stand",
+                    "patch", "pft", "indiv", "layer", "depth_top",
+                    "depth_bottom")
 
 .calc_date <- function(dt) {
     cols <- names(dt)
+    # Multiple layers, patches, or individuals can share one timestamp.
     if ("Year" %in% cols && "Day" %in% cols && "timestep" %in% cols) {
-        dt[, Date := as.POSIXct(paste(Year, Day, timestep),
-                                format = "%Y %j %H")]
+        dates <- unique(dt[, .(Year, Day, timestep)])
+        dates[, Date := as.POSIXct(paste(Year, Day, timestep),
+                                  format = "%Y %j %H")]
+        dt[, Date := dates[dt, on = .(Year, Day, timestep), Date]]
         dt$Year <- NULL
         dt$Day <- NULL
         dt$timestep <- NULL
     } else if ("Year" %in% cols && "Day" %in% cols) {
-        dt[, Date := as.POSIXct(paste(Year, Day + 1),
-                                format = "%Y %j")]
+        dates <- unique(dt[, .(Year, Day)])
+        dates[, Date := as.POSIXct(paste(Year, Day + 1),
+                                  format = "%Y %j")]
+        dt[, Date := dates[dt, on = .(Year, Day), Date]]
         dt$Year <- NULL
         dt$Day <- NULL
     } else if ("Year" %in% cols) {
-        dt[, Date := as.POSIXct(paste0(Year, "-12-31"),
-                                format = "%Y-%m-%d")]
+        dates <- unique(dt[, .(Year)])
+        dates[, Date := as.POSIXct(paste0(Year, "-12-31"),
+                                  format = "%Y-%m-%d")]
+        dt[, Date := dates[dt, on = "Year", Date]]
         dt$Year <- NULL
     } else {
         stop("Cannot calculate date from columns: ",
@@ -64,6 +72,8 @@
     out_file <- .get_out_file(repo, output, site)
     dt <- data.table::fread(out_file)
 
+    dt <- .calc_date(dt)
+
     # Pivot to long format.
     data_cols <- setdiff(names(dt), .identity_cols)
     id_cols <- intersect(.identity_cols, names(dt))
@@ -72,8 +82,6 @@
                            measure.vars = data_cols,
                            variable.name = "variable", value.name = "value")
 
-    dt <- .calc_date(dt)
-
     dt$repo <- repo
     dt$output <- output
     dt$site <- site
@@ -81,13 +89,16 @@
     return(dt)
 }
 
-#' Read LPJ-GUESS outputs from a DAVE repository.
+#' Read OzFlux site outputs from a DAVE repository.
 #'
-#' @param repos Path(s) to one or more DAVE repositories.
-#' @param outputs Output name(s) to read.
-#' @param sites Site name(s) to read.
+#' @param repos Path(s) to top-level LPJ-GUESS DAVE repositories.
+#' @param outputs Output file stem(s), such as `"dave_lai"`.
+#' @param sites OzFlux site directory name(s), such as `"CumberlandPlain"`.
 #'
-#' @return a data.table containing the requested outputs.
+#' @return A long-form `data.table` containing the requested outputs, with
+#'   `variable` and `value` columns plus the available site, time, and
+#'   dimension columns.
+#' @seealso [plot_dave()], `vignette("plotting-dave")`
 #' @export
 read_dave <- function(repos, outputs, sites) {
     repos <- vapply(repos, .sanitise_repo, character(1))
@@ -96,8 +107,8 @@ read_dave <- function(repos, outputs, sites) {
         data.table::rbindlist(lapply(outputs, function(output) {
             data.table::rbindlist(lapply(sites, function(site) {
                 .read_dave_single(repo, output, site)
-            }))
-        }))
-    }))
+            }), use.names = TRUE, fill = TRUE)
+        }), use.names = TRUE, fill = TRUE)
+    }), use.names = TRUE, fill = TRUE)
     return(data)
 }

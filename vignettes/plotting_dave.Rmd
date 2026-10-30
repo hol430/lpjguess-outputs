@@ -1,0 +1,139 @@
+---
+title: "Plotting OzFlux site outputs from DAVE"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Plotting OzFlux site outputs from DAVE}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+`plot_dave()` makes quick time series plots from **OzFlux site-level simulations run in the LPJ-GUESS DAVE repository**. It expects output files under `benchmarks/ozflux/<site>/out/` in that repository. It is a convenience function for that layout, rather than a general plotter for every LPJ-GUESS output file.
+
+This guide starts with a single output, then compares sites and outputs, changes faceting and colour, and finally reads the underlying data for a custom plot. The examples need your own completed DAVE run; set `repo` and the site names below before running them.
+
+## Choose a repository and site
+
+```{r choose-run}
+library(lpjguessOutput)
+library(ggplot2)
+
+repo <- "/path/to/lpj-guess/dave"  # Top-level DAVE repository
+site <- "CumberlandPlain"
+sites <- c("CumberlandPlain", "Warra")
+```
+
+For example, the LAI output for `site` should be at `file.path(repo, "benchmarks", "ozflux", site, "out", "dave_lai.out")`. Pass the file stem, `"dave_lai"`, as the output name. The run must have enabled and produced each output you request. The reader currently expects these conventional filenames.
+
+## Start with a time series
+
+```{r first-plot}
+plot_dave(repo, "dave_lai", site)
+```
+
+The default plot colours lines by data column and facets by site and output. In a PFT-style file, columns such as `MRS` and `total` become separate lines. To focus on one column, use its name as it appears in the `.out` file:
+
+```{r choose-column}
+plot_dave(repo, "dave_lai", site, columns = "MRS")
+```
+
+`plot_dave()` returns a ggplot object, so you can add ordinary ggplot layers and themes:
+
+```{r customize-plot}
+plot_dave(repo, "dave_lai", site, columns = "MRS") +
+  labs(title = "MRS leaf area index")
+```
+
+## Compare sites and outputs
+
+Give `sites` a vector to make a panel for each site. When comparing values across panels, a shared y-axis makes the magnitudes easier to judge:
+
+```{r compare-sites}
+plot_dave(repo, "dave_lai", sites,
+          columns = "MRS", common_yaxis = TRUE)
+```
+
+You can also request several outputs. Here, LAI and net primary productivity have different units, so each output gets its own y-axis scale. The output labels include units when the registry knows them:
+
+```{r compare-outputs}
+plot_dave(repo, c("dave_lai", "dave_pft_npp"), site,
+          columns = "MRS", common_yaxis = FALSE)
+```
+
+`MRS` has different units in these two outputs, so its shared colour label has no unit; the output panel labels carry the units instead.
+
+With `columns = NULL`, `plot_dave()` selects column names shared by every requested output and reports an error if there are none. `MRS` is present in both files above. You can pass `columns` explicitly to select names even when they occur in different outputs; only the matching columns are plotted.
+
+## Choose the panels and colours
+
+`facet` accepts one or more dimensions; `colour` accepts one. Available choices are `"column"`, `"site"`, `"output"`, `"patch"`, `"stand"`, `"pft"`, `"indiv"`, and `"layer"`. Use dimensions that exist in the files you selected. `"column"` means a data column in the original output file.
+
+For example, put each LAI column (ie each PFT) in its own panel and compare sites by colour:
+
+```{r facet-column-colour-site}
+plot_dave(repo, "dave_lai", sites,
+          facet = "column", colour = "site", common_yaxis = TRUE)
+```
+
+To give each site and column its own panel, pass both to `facet`:
+
+```{r facet-site-and-column}
+plot_dave(repo, "dave_lai", sites,
+          facet = c("site", "column"), colour = "column")
+```
+
+## Plot a layered soil output
+
+`dave_soil_state.out` has one row per soil layer, patch, and day, with columns such as `wmass`, `imass`, and `psi_mpa`. For two water-mass quantities with the same units, a panel per layer is useful:
+
+```{r soil-layer-panels}
+plot_dave(repo, "dave_soil_state", site,
+          columns = c("wmass", "imass"),
+          facet = "layer", colour = "column", common_yaxis = TRUE)
+```
+
+Recent `dave_soil_state` files include `depth_top` and `depth_bottom` in millimetres. When the bounds are consistent across the plotted data, the layer strips and colour legend show ranges such as `Layer 1 (0-10 cm)`. Older files, or plots combining conflicting layer depths, use layer numbers. Other outputs without depth information, such as `dave_soil_psi_layer`, also use layer numbers.
+
+To compare layers in the same panel, colour by layer instead:
+
+```{r soil-colour-layer}
+plot_dave(repo, "dave_soil_state", site,
+          columns = "psi_mpa", facet = "column", colour = "layer")
+```
+
+## Read the data for a custom plot
+
+`plot_dave()` generates basic time series plots. For more complicated aggregation and plotting, call `read_dave()` with the same repository, output, and site arguments:
+
+```{r read-data}
+soil <- read_dave(repo, "dave_soil_state", site)
+
+names(soil)
+unique(soil$variable)
+head(soil[soil$variable == "psi_mpa", ])
+```
+
+`read_dave()` returns a `data.table` in long form: `variable` holds the original data-column name and `value` holds its numeric value. `Date`, `repo`, `site`, and `output` identify the source. Dimensions present in the file, such as `stand`, `patch`, and `layer`, remain columns. You can pass vectors of repositories, outputs, or sites to combine their data. See `?read_dave` for the function reference.
+
+Here is a depth-by-time plot for one stand and patch over the first 90 days. It uses the actual bounds of each layer, which a line plot cannot show:
+
+```{r custom-depth-plot}
+psi <- soil[soil$variable == "psi_mpa", ]
+psi <- psi[psi$stand == psi$stand[1] & psi$patch == psi$patch[1], ]
+first_day <- min(as.Date(psi$Date))
+psi <- psi[as.Date(psi$Date) < first_day + 90, ]
+
+ggplot(psi, aes(xmin = as.Date(Date), xmax = as.Date(Date) + 1,
+                ymin = depth_top / 10, ymax = depth_bottom / 10,
+                fill = value)) +
+  geom_rect() +
+  scale_y_reverse() +
+  labs(x = "Date", y = "Soil depth (cm)",
+       fill = "Soil water potential (MPa)") +
+  theme_bw()
+```
+
+This same approach works when you need to aggregate patches, join outputs, use a different geometry, or choose labels and scales that depend on your scientific question.

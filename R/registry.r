@@ -169,7 +169,8 @@ setClass(
     slots = c(
         units_by_layer = "character",
         aggregation_level = "character",
-        temporal_resolution = "character"
+        temporal_resolution = "character",
+        get_name_func = "function"
     )
 )
 
@@ -179,12 +180,14 @@ setClass(
     slots = c(
         aggregation_level = "character",
         temporal_resolution = "character",
-        default_units = "character"
+        default_units = "character",
+        get_name_func = "function"
     )
 )
 
 setGeneric("is_data_layer", function(x, layer, ...) standardGeneric("is_data_layer"))
 setGeneric("get_units", function(x, layer, ...) standardGeneric("get_units"))
+setGeneric("get_name", function(x, layer, ...) standardGeneric("get_name"))
 
 #'
 #' Normalize static layer definitions to a named layer->unit vector.
@@ -257,7 +260,8 @@ setGeneric("get_units", function(x, layer, ...) standardGeneric("get_units"))
 create_static_layers <- function(layer_units,
                                  aggregation_level,
                                  temporal_resolution,
-                                 default_units = "") {
+                                 default_units = "",
+                                 get_name_func = NULL) {
     units_by_layer <- .normalise_layer_units(layer_units, default_units)
     aggregation_level <- validate_aggregation_level(aggregation_level)
     temporal_resolution <- validate_temporal_resolution(temporal_resolution)
@@ -265,7 +269,9 @@ create_static_layers <- function(layer_units,
         "StaticLayers",
         units_by_layer = units_by_layer,
         aggregation_level = aggregation_level,
-        temporal_resolution = temporal_resolution
+        temporal_resolution = temporal_resolution,
+        get_name_func = if (is.function(get_name_func)) get_name_func else
+            function(layer) layer
     )
 }
 
@@ -283,7 +289,8 @@ create_static_layers <- function(layer_units,
 create_dynamic_layers <- function(
     aggregation_level,
     temporal_resolution,
-    default_units
+    default_units,
+    get_name_func = NULL
 ) {
     aggregation_level <- validate_aggregation_level(aggregation_level)
     temporal_resolution <- validate_temporal_resolution(temporal_resolution)
@@ -297,7 +304,9 @@ create_dynamic_layers <- function(
         "DynamicLayers",
         aggregation_level = aggregation_level,
         temporal_resolution = temporal_resolution,
-        default_units = default_units
+        default_units = default_units,
+        get_name_func = if (is.function(get_name_func)) get_name_func else
+            function(layer) layer
     )
 }
 
@@ -340,6 +349,31 @@ setMethod("get_units", signature(x = "DynamicLayers", layer = "character"),
                   stop("Layer '", layer, "' is a metadata layer")
               }
               x@default_units
+          })
+
+# Helper methods to get human readable labels for layers.
+setMethod("get_name", signature(x = "StaticLayers", layer = "character"),
+          function(x, layer, ...) {
+              if (!is_data_layer(x, layer)) {
+                  stop("Layer '", layer, "' not found")
+              }
+              # Most layers won't have a name lookup function.
+              if (is.function(x@get_name_func)) {
+                  return(x@get_name_func(layer))
+              }
+              return(layer)
+          })
+
+setMethod("get_name", signature(x = "DynamicLayers", layer = "character"),
+          function(x, layer, ...) {
+              if (!is_data_layer(x, layer, ...)) {
+                  stop("Layer '", layer, "' is a metadata layer")
+              }
+              # Most layers won't have a name lookup function.
+              if (is.function(x@get_name_func)) {
+                  return(x@get_name_func(layer))
+              }
+              return(layer)
           })
 
 # Output-file metadata.
@@ -594,7 +628,7 @@ get_display_units <- function(filename, layer = NULL) {
 
     units <- metadata@units
     if (!is.null(layer) && is.character(layer) && length(layer) == 1 &&
-        nzchar(layer)) {
+            nzchar(layer)) {
         units <- tryCatch(
             get_units(metadata@layers, layer),
             error = function(e) units
@@ -602,6 +636,17 @@ get_display_units <- function(filename, layer = NULL) {
     }
 
     units
+}
+
+get_display_label <- function(var_id, layer) {
+    filename <- paste0(var_id, ".out")
+    metadata <- guess_metadata_from_filename(filename)
+    if (is.null(metadata)) {
+        warning("Failed to resolve metadata for var: ", var_id)
+        return(layer)
+    }
+
+    return(get_name(metadata@layers, layer))
 }
 
 #'
@@ -631,7 +676,10 @@ resolve_quantity_metadata <- function(var_id, layer = NULL) {
         name = if (nzchar(metadata@name)) metadata@name else NULL,
         units = get_display_units(filename, layer = layer),
         display_name = get_display_name(filename),
-        metadata = metadata
+        metadata = metadata,
+        get_layer_name = function(layer) {
+            return(get_name(metadata@layers, layer))
+        }
     )
 }
 
@@ -684,6 +732,7 @@ clear_output_registry <- function() {
 #' @param units Character scalar unit string.
 #' @param aggregation_level Character scalar aggregation level.
 #' @param temporal_resolution Character scalar temporal resolution.
+#' @param get_name_func Optional function to get human-readable layer names.
 #'
 #' @return The registered metadata object (invisibly).
 #'
@@ -695,7 +744,8 @@ add_output_dynamic <- function(
     description,
     units,
     aggregation_level,
-    temporal_resolution
+    temporal_resolution,
+    get_name_func = NULL
 ) {
     metadata <- create_output_metadata(
         id = id,
@@ -704,7 +754,8 @@ add_output_dynamic <- function(
         units = units,
         aggregation_level = aggregation_level,
         temporal_resolution = temporal_resolution,
-        layers = NULL
+        layers = create_dynamic_layers(aggregation_level, temporal_resolution,
+                                       units, get_name_func)
     )
     register_output_metadata(metadata)
 }
