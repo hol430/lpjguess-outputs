@@ -693,7 +693,8 @@ resolve_quantity_metadata <- function(var_id, layer = NULL) {
 #' @keywords internal
 #'
 clear_output_registry <- function() {
-    set_global("output_registry", new.env(parent = emptyenv()))
+    rm(list = ls(.output_registry, all.names = TRUE), envir = .output_registry)
+    invisible(NULL)
 }
 
 #'

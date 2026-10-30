@@ -99,6 +99,7 @@
 #'   `variable` and `value` columns plus the available site, time, and
 #'   dimension columns.
 #' @seealso [plot_dave()], `vignette("plotting-dave")`
+#' @importFrom data.table :=
 #' @export
 read_dave <- function(repos, outputs, sites) {
     repos <- vapply(repos, .sanitise_repo, character(1))
