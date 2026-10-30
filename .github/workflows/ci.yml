@@ -1,0 +1,133 @@
+name: R package
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Document, build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      R_KEEP_PKG_SOURCE: 'yes'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - name: Set up Pandoc
+        uses: r-lib/actions/setup-pandoc@v2
+
+      - name: Read documentation tool version
+        id: roxygen
+        shell: Rscript {0}
+        run: |
+          version <- read.dcf("DESCRIPTION", fields = "Config/roxygen2/version")[[1L]]
+          stopifnot(!is.na(version), nzchar(version))
+          cat("version=", version, "\n", sep = "",
+              file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
+
+      - name: Install package and CI dependencies
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::roxygen2@${{ steps.roxygen.outputs.version }}
+            any::rcmdcheck
+
+      - name: Verify release version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: Rscript {0}
+        run: |
+          version <- read.dcf("DESCRIPTION", fields = "Version")[[1L]]
+          tag <- Sys.getenv("GITHUB_REF_NAME")
+          if (!identical(tag, version)) {
+            stop("Release tag '", tag, "' does not match DESCRIPTION version '",
+                 version, "'.")
+          }
+
+      - name: Generate documentation and check it is committed
+        shell: bash
+        run: Rscript .githooks/roxygenise.R --check
+
+      - name: Build source package including vignettes
+        shell: bash
+        run: |
+          mkdir -p dist
+          cd dist
+          R CMD build --no-manual "$GITHUB_WORKSPACE"
+
+      - name: Check package and run unit tests
+        shell: Rscript {0}
+        run: |
+          tarball <- Sys.glob("dist/*.tar.gz")
+          stopifnot(length(tarball) == 1L)
+          rcmdcheck::rcmdcheck(
+            path = tarball,
+            args = "--no-manual",
+            error_on = "error",
+            check_dir = "check"
+          )
+
+      - name: Upload check logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: r-check-logs
+          path: |
+            check/**/*.log
+            check/**/*.out
+            check/**/*.Rout*
+          if-no-files-found: ignore
+
+      - name: Upload validated source package
+        uses: actions/upload-artifact@v7
+        with:
+          name: r-source-package
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    needs: check
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download validated source package
+        uses: actions/download-artifact@v8
+        with:
+          name: r-source-package
+          path: dist
+
+      - name: Publish release and attach source package
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist/*.tar.gz --clobber
+          else
+            gh release create "$RELEASE_TAG" dist/*.tar.gz \
+              --verify-tag \
+              --generate-notes \
+              --title "$RELEASE_TAG"
+          fi

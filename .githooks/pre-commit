@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+# Documentation-only commits also need validation. Other commits can skip R.
+if git diff --cached --quiet -- R/ DESCRIPTION NAMESPACE man/ .githooks/ &&
+   [[ -z "$(git ls-files --others --exclude-standard -- NAMESPACE man/)" ]]; then
+    exit 0
+fi
+
+# roxygen reads the working tree. Require its inputs to match the index so
+# unstaged changes cannot accidentally appear in the committed documentation.
+if ! git diff --quiet -- R/ DESCRIPTION man/roxygen/ .githooks/roxygenise.R ||
+   [[ -n "$(git ls-files --others --exclude-standard -- R/ man/roxygen/)" ]]; then
+    cat >&2 <<'MESSAGE'
+Cannot regenerate documentation while package sources have unstaged changes.
+Stage or stash the edits in R/, DESCRIPTION, man/roxygen/, or the documentation
+script, then retry the commit. Your files and staging area have been left alone.
+MESSAGE
+    exit 1
+fi
+
+Rscript .githooks/roxygenise.R --check
