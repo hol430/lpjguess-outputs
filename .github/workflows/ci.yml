@@ -46,7 +46,7 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
-            any::roxygen2@${{ steps.roxygen.outputs.version }}
+            roxygen2@${{ steps.roxygen.outputs.version }}
             any::rcmdcheck
 
       - name: Verify release version
