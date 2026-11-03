@@ -110,6 +110,42 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Extract release notes from NEWS.md
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          awk -v version="$RELEASE_TAG" '
+            /^#[[:space:]]+lpjguessOutput[[:space:]]+/ {
+              if (selected) exit
+              selected = ($3 == version)
+              if (selected) {
+                found = 1
+                print
+              }
+              next
+            }
+            selected {
+              print
+              if ($0 ~ /[^[:space:]]/) nonempty = 1
+            }
+            END {
+              if (!found) {
+                print "No NEWS.md section for release " version > "/dev/stderr"
+                exit 1
+              }
+              if (!nonempty) {
+                print "Empty NEWS.md section for release " version > "/dev/stderr"
+                exit 1
+              }
+            }
+          ' NEWS.md > "$RUNNER_TEMP/release-notes.md"
+
       - name: Download validated source package
         uses: actions/download-artifact@v8
         with:
@@ -125,9 +161,10 @@ jobs:
         run: |
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" dist/*.tar.gz --clobber
+            gh release edit "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
           else
             gh release create "$RELEASE_TAG" dist/*.tar.gz \
               --verify-tag \
-              --generate-notes \
+              --notes-file "$RUNNER_TEMP/release-notes.md" \
               --title "$RELEASE_TAG"
           fi
