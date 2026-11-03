@@ -3,7 +3,7 @@ test_that("factor selection supports public names, abbreviations and multiple fa
     expect_identical(.sanitise_factor("col"), "variable")
     expect_identical(.sanitise_factor(c("site", "column", "layer"), TRUE),
                       c("site", "variable", "layer"))
-    for (factor in c("site", "output", "patch", "stand", "pft", "indiv", "layer")) {
+    for (factor in c("site", "output", "repo", "patch", "stand", "pft", "indiv", "layer")) {
         expect_identical(.sanitise_factor(factor), factor)
     }
     expect_error(.sanitise_factor("unknown"), "should be one of")

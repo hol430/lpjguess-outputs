@@ -30,8 +30,8 @@ to all requested outputs are plotted.}
 
 \item{colour}{One colouring dimension.
 
-Valid factors are: "column", "site", "output", "patch", "stand", "pft",
-"indiv", "layer".}
+Valid factors are: "column", "site", "output", "repo" (source directory),
+"patch", "stand", "pft", "indiv", "layer".}
 }
 \value{
 a ggplot2 object.

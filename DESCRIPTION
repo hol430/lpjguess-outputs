@@ -11,6 +11,9 @@ Imports:
     data.table,
     ggplot2
 Suggests:
+    htmltools,
+    plotly (>= 4.12.0),
+    shiny (>= 1.5.0),
     testthat (>= 3.2.0),
     withr,
     knitr,
@@ -24,3 +27,4 @@ Collate:
     'quantities.r'
     'data.r'
     'plotting.r'
+    'shiny.r'

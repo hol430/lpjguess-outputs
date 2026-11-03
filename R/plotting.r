@@ -275,6 +275,7 @@
     class(.facet_label) <- "labeller"
 
     colour_titles <- c(variable = "Column", site = "Site", output = "Output",
+                       repo = "Source",
                        patch = "Patch", stand = "Stand", pft = "PFT",
                        indiv = "Individual", layer = "Layer")
     scales <- if (common_yaxis) "fixed" else "free_y"
@@ -305,7 +306,7 @@
     plt
 }
 
-.factors <- c("column", "site", "output", "patch", "stand", "pft", "indiv",
+.factors <- c("column", "site", "output", "repo", "patch", "stand", "pft", "indiv",
               "layer")
 .sanitise_factor <- function(factor, allow_multiple = FALSE) {
     res <- match.arg(factor, .factors, several.ok = allow_multiple)
@@ -328,8 +329,8 @@
 #' @param facet One or more faceting dimensions.
 #' @param colour One colouring dimension.
 #'
-#' Valid factors are: "column", "site", "output", "patch", "stand", "pft",
-#' "indiv", "layer".
+#' Valid factors are: "column", "site", "output", "repo" (source directory),
+#' "patch", "stand", "pft", "indiv", "layer".
 #'
 #' @return a ggplot2 object.
 #' @seealso [read_dave()], `vignette("plotting-dave")`

@@ -15,6 +15,39 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 
 This guide starts with a single output, then compares sites and outputs, changes faceting and colour, and finally reads the underlying data for a custom plot. The examples need your own completed DAVE run; set `repo` and the site names below before running them.
 
+## Explore interactively
+
+`dave_shiny()` exposes the plotting controls in a Shiny app. Install the optional
+`shiny` and `plotly` packages (plotly >= 4.12.0), then launch it with empty or
+prepopulated source choices:
+
+```{r shiny-app}
+library(lpjguessOutput)
+dave_shiny()
+dave_shiny(c(Baseline = "/path/to/dave", Experiment = "/path/to/dave2"))
+```
+
+The app offers sites shared by every selected source, then non-stale outputs
+shared by every selected source/site pair. Outputs are grouped by short name
+(for example, NPP), with temporal resolution and aggregation level identifying
+each option. Freshness is measured relative to
+the newest `.out` file in each site's output directory, with a default
+10-second window. This is a timestamp heuristic rather than proof of run
+completion. Empty and unreadable files are excluded. Add paths on the machine
+running R; use **Refresh files** after simulations change, or leave automatic
+checks enabled. `refresh_interval = 0` disables periodic checks.
+
+Select columns, facets, colours, and y-axis scales, including **Source** to
+compare repositories. Optional dimensions appear when present in the data.
+The app selects common columns initially, or all columns for disjoint outputs.
+It includes PNG/PDF and CSV downloads, a data preview, file statuses, and the
+equivalent R plotting call. The examples below show the same controls in R.
+
+In the app, `ggplotly()` adds hover details, zoom, pan, and clickable legend
+entries to the existing ggplot. `plot_dave()` continues to return a ggplot,
+and PNG/PDF downloads retain the full static plot independently of browser
+zoom or hidden traces. Large selections can be slow to convert and display.
+
 ## Choose a repository and site
 
 ```{r choose-run}
