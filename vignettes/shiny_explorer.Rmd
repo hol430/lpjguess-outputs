@@ -1,0 +1,88 @@
+---
+title: "Exploring DAVE outputs in Shiny"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Exploring DAVE outputs in Shiny}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+`dave_shiny()` explores OzFlux site outputs from DAVE in a Shiny app. You can
+select repositories, sites, and outputs, then adjust the plot controls without
+writing R code. For the same controls in R, see the [plotting
+guide](plotting_dave.html). The examples below need your own DAVE repository
+paths.
+
+## Launch the explorer
+
+Install the optional app dependencies and launch the explorer:
+
+```{r launch-app}
+install.packages(c("shiny", "plotly"))  # plotly >= 4.12.0
+library(lpjguessOutput)
+dave_shiny()
+```
+
+You can also pass repository paths at startup. All supplied repositories are
+selected initially; names provide labels for the source dropdown:
+
+```{r initial-sources}
+dave_shiny(c(Baseline = "/path/to/dave", Experiment = "/path/to/dave2"))
+```
+
+The function returns a Shiny application object. In interactive sessions,
+including RStudio, printing it opens the app in your default web browser. To
+open the URL yourself, use:
+
+```{r manual-browser}
+dave_shiny(launch.browser = FALSE)
+```
+
+Automatic browser opening is disabled in non-interactive sessions. You can
+also pass the application object to `shiny::runApp()`.
+
+## Choose sources, sites, and outputs
+
+Add repository directories (one path per line), select one or more sources,
+then choose sites and outputs. These directories should be LPJ-GUESS DAVE
+repositories, each containing paths such as:
+`benchmarks/ozflux/<site>/out/<output>.out`.
+
+Only sites present in every selected repository, and outputs present in every
+selected repository/site pair are shown. Custom outputs without registered
+metadata remain available under their filenames, but generated plots will not
+have useful metadata such as units.
+
+## Refresh output files
+
+Fresh outputs are those modified within 10 seconds of the newest `.out` file in
+each site's output directory by default. This timestamp heuristic excludes
+leftover outputs from old runs. Empty and unreadable files are also excluded.
+The **Files** tab shows each file's status.
+
+Files are checked every five seconds and when **Refresh files** is clicked;
+unchanged snapshots do not reload the data. Use `stale_threshold_secs` to change
+the freshness window and `refresh_interval = 0` to disable periodic checks:
+
+```{r refresh-settings}
+dave_shiny("/path/to/dave", stale_threshold_secs = 30, refresh_interval = 0)
+```
+
+## Choose plot controls
+
+Choose data columns, one or more facets, a colour dimension, and shared or
+independent y-axis scales. **Source** distinguishes repositories, while patch,
+stand, PFT, individual, and soil layer dimensions are offered when present.
+Initially, columns common to every selected file are selected; when outputs
+have disjoint columns, all columns are selected explicitly. Metadata labels,
+units, and soil depth labels use the same plotting code as `plot_dave()`.
+
+## Inspect and export results
+
+Preview the plotted data in **Data preview**, inspect output file statuses in
+**Files**, or copy the equivalent `plot_dave()` call from **R code**. Download
+the plotted data as CSV or save the plot as PNG or PDF.
