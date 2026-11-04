@@ -115,6 +115,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Pandoc
+        uses: r-lib/actions/setup-pandoc@v2
+
       - name: Extract release notes from NEWS.md
         shell: bash
         env:
@@ -144,7 +147,12 @@ jobs:
                 exit 1
               }
             }
-          ' NEWS.md > "$RUNNER_TEMP/release-notes.md"
+          ' NEWS.md > "$RUNNER_TEMP/release-notes-wrapped.md"
+
+          # Join wrapped prose without removing Markdown block boundaries.
+          pandoc --from=gfm --to=gfm --wrap=none \
+            "$RUNNER_TEMP/release-notes-wrapped.md" \
+            --output="$RUNNER_TEMP/release-notes.md"
 
       - name: Download validated source package
         uses: actions/download-artifact@v8
