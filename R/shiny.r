@@ -232,7 +232,9 @@
                 shiny::actionButton("add_sources", "Add sources"),
                 shiny::helpText("Use paths on the machine running R. Each repository must contain benchmarks/ozflux/settings.ins."),
                 shiny::selectizeInput("sources", "Selected sources", choices = repos,
-                    selected = unname(repos), multiple = TRUE),
+                    selected = unname(repos), multiple = TRUE,
+                    # Override browser-restored selections before Shiny binds inputs.
+                    options = list(items = as.list(unname(repos)))),
                 shiny::selectizeInput("sites", "Sites shared by all sources",
                     choices = character(), multiple = TRUE),
                 shiny::selectizeInput("outputs", "Outputs shared by all sites and sources",
@@ -494,6 +496,12 @@
     }
 }
 
+.validate_scalar <- function(scalar, name) {
+    if (!is.numeric(scalar) || length(scalar) != 1L || !is.finite(scalar) || scalar < 0) {
+        stop(sprintf("'%s' must be a non-negative finite numeric value of length 1.", name))
+    }
+}
+
 #' Explore DAVE outputs in a Shiny app.
 #'
 #' Select repository directories, sites shared by all selected repositories,
@@ -533,9 +541,12 @@
 #'   can still be compared. Optional dimensions are offered when present in the
 #'   loaded data. Metadata and soil-depth labels follow [plot_dave()].
 #'
-#' @return A `shiny.appobj`. Print it to launch interactively, or pass it to
-#'   [shiny::runApp()]. Requires the suggested packages \pkg{shiny} and
-#'   \pkg{plotly} (version 4.12.0 or newer).
+#' @return A `shiny.appobj`. Print it to launch interactively in the default web
+#'   browser, including from RStudio, or pass it to [shiny::runApp()]. Automatic
+#'   browser opening is disabled in non-interactive sessions. Use
+#'   `shiny::runApp(app, launch.browser = FALSE)` to suppress browser opening.
+#'   Requires the suggested packages \pkg{shiny} and \pkg{plotly} (version 4.12.0
+#'   or newer).
 #' @seealso [plot_dave()], [read_dave()]
 #' @examples
 #' if (interactive() && requireNamespace("shiny", quietly = TRUE) &&
@@ -544,8 +555,10 @@
 #'     # dave_shiny(c(Baseline = "/path/to/dave", Experiment = "/path/to/dave2"))
 #' }
 #' @export
-dave_shiny <- function(repos = character(), stale_threshold_secs = 10,
-                       refresh_interval = 5000) {
+dave_shiny <- function(repos = character(),
+                       stale_threshold_secs = 10,
+                       refresh_interval = 5000,
+                       launch.browser = interactive()) {
     if (!requireNamespace("shiny", quietly = TRUE)) {
         stop("Install the shiny package to use dave_shiny(): install.packages(\"shiny\")",
              call. = FALSE)
@@ -556,12 +569,12 @@ dave_shiny <- function(repos = character(), stale_threshold_secs = 10,
              call. = FALSE)
     }
     repos <- .dave_sources(repos)
-    for (name in c("stale_threshold_secs", "refresh_interval")) {
-        value <- get(name)
-        if (!is.numeric(value) || length(value) != 1L || !is.finite(value) || value < 0) {
-            stop(name, " must be a finite non-negative number.", call. = FALSE)
-        }
-    }
+
+    .validate_scalar(stale_threshold_secs, "stale_threshold_secs")
+    .validate_scalar(refresh_interval, "refresh_interval")
+
+    # Prefer the external browser over RStudio's Shiny viewer preference.
     shiny::shinyApp(.dave_shiny_ui(repos),
-                    .dave_shiny_server(repos, stale_threshold_secs, refresh_interval))
+                    .dave_shiny_server(repos, stale_threshold_secs, refresh_interval),
+                    options = list(launch.browser = launch.browser))
 }

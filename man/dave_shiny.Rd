@@ -7,7 +7,8 @@
 dave_shiny(
   repos = character(),
   stale_threshold_secs = 10,
-  refresh_interval = 5000
+  refresh_interval = 5000,
+  launch.browser = interactive()
 )
 }
 \arguments{
@@ -25,9 +26,12 @@ a guarantee that files belong to the same completed simulation.}
 clicked. Unchanged files are not reread on each check.}
 }
 \value{
-A \code{shiny.appobj}. Print it to launch interactively, or pass it to
-\code{\link[shiny:runApp]{shiny::runApp()}}. Requires the suggested packages \pkg{shiny} and
-\pkg{plotly} (version 4.12.0 or newer).
+A \code{shiny.appobj}. Print it to launch interactively in the default web
+browser, including from RStudio, or pass it to \code{\link[shiny:runApp]{shiny::runApp()}}. Automatic
+browser opening is disabled in non-interactive sessions. Use
+\code{shiny::runApp(app, launch.browser = FALSE)} to suppress browser opening.
+Requires the suggested packages \pkg{shiny} and \pkg{plotly} (version 4.12.0
+or newer).
 }
 \description{
 Select repository directories, sites shared by all selected repositories,

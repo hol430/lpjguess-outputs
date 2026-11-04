@@ -87,9 +87,44 @@ test_that("the public app validates configuration and produces a Shiny app", {
     skip_if_not_installed("plotly", "4.12.0")
     expect_s3_class(dave_shiny(), "shiny.appobj")
     expect_error(dave_shiny(stale_threshold_secs = -1), "stale_threshold_secs")
-    expect_error(dave_shiny(stale_threshold_secs = NA_real_), "finite non-negative")
+    expect_error(dave_shiny(stale_threshold_secs = NA_real_), "non-negative finite")
     expect_error(dave_shiny(refresh_interval = Inf), "refresh_interval")
     expect_error(dave_shiny(refresh_interval = "1000"), "refresh_interval")
+})
+
+test_that("sources initialise in Selectize without a corrective server update", {
+    skip_if_not_installed("shiny")
+    skip_if_not_installed("plotly", "4.12.0")
+    withr::local_pdf(tempfile(fileext = ".pdf"))
+    first <- local_dave_repo()
+    second <- local_dave_repo()
+    # Start without repositories, then restart with one or several sources.
+    for (repos in list(character(), first, c(Baseline = first, Experiment = second))) {
+        ui <- htmltools::tagQuery(.dave_shiny_ui(.dave_sources(repos)))
+        config <- Filter(function(tag) identical(tag$attribs[["data-for"]], "sources"),
+                         ui$find("script")$selectedTags())[[1L]]
+        # Items must be a JSON array, including for zero or one repository.
+        items <- paste(encodeString(unname(repos), quote = '"'), collapse = ",")
+        expect_match(as.character(config), paste0('"items":[', items, ']'), fixed = TRUE)
+
+        updates <- list()
+        session <- shiny::MockShinySession$new()
+        session$sendInputMessage <- function(inputId, message) {
+            if (inputId == "sources") updates[[length(updates) + 1L]] <<- message
+        }
+        server <- .dave_shiny_server(.dave_sources(repos), 10, 0)
+        shiny::testServer(server, {
+            session$setInputs(sources = unname(repos))
+            expect_identical(selected_repos(), unname(repos))
+            if (length(repos)) expect_identical(site_choices(), "TestSite")
+            expect_length(updates, 0L)
+
+            selected <- utils::head(unname(repos), max(0L, length(repos) - 1L))
+            session$setInputs(sources = selected, refresh = 1)
+            expect_identical(selected_repos(), selected)
+            expect_length(updates, 0L)
+        }, session = session)
+    }
 })
 
 test_that("the server caches data, exposes plot controls and exports reproducible code", {
