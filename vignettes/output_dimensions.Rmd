@@ -1,0 +1,74 @@
+---
+title: "Understanding output dimensions"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Understanding output dimensions}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+Both the [DAVE plotting guide](plotting_dave.html) and the
+[runner outputs guide](runner_outputs.html) use **dimensions** to describe which
+model prediction a value belongs to. The same concepts apply when plotting in
+R or exploring outputs in Shiny.
+
+## Values and dimensions
+
+A value answers **what was predicted, and what was its value?** For example, a
+soil water mass output might contain `wmass = 12`. Dimensions answer **where,
+when, and for which part of the model?** That value might describe one soil
+layer in one patch on one day.
+
+The reader functions return long-form tables: `variable` holds the literal
+column name (such as `wmass`) and `value` holds its value. Other columns
+identify its time, location, model dimensions, and source simulation. Several
+predictions can share a date while belonging to different patches, layers, or
+simulations.
+
+Model dimensions depend on the output file. Common identifiers include:
+
+| Columns | What they identify |
+| --- | --- |
+| `Lon`, `Lat` | The model grid cell's coordinates. |
+| `stand` | The stand represented by the row. |
+| `patch` | The patch represented by the row. |
+| `pft` | The plant functional type, when the file identifies PFTs in rows. |
+| `indiv` | The model individual identifier recorded by the output. |
+| `layer` | The soil layer, using the file's layer index. |
+
+Identifiers must be interpreted together with the other dimensions and the
+simulation they belong to. For example, patch 0 in one simulation is a separate
+series from patch 0 in another.
+
+## The column dimension
+
+The plotting APIs call the data dimension `column`; its name in the
+reader's long-form table is `variable`.
+
+Some files have a separate data column for each PFT, plus a `total` column. In
+that layout, use `column` to distinguish those series. A `pft` dimension is
+available only when the original file contains an explicit `pft` identifier
+column (typically only in cohort-level outputs).
+
+## Facets, colours, and lines
+
+`facet` chooses which dimensions divide a plot into panels. `colour` chooses
+one dimension whose values distinguish colours. For example, `facet = "layer"`
+and `colour = "column"` puts each soil layer in its own panel and colours the
+different data columns within each panel.
+
+Changing those controls does not aggregate predictions. If a file contains
+several patches, their lines remain separate even when they share a panel and
+colour. Use the reader and an explicit aggregation step when you need a patch
+mean or another summary.
+
+The source also contributes dimensions. DAVE outputs have `repo` and `site`;
+runner outputs have `instruction_file`, `simulation`, and `run_id`. Runner
+parameter overrides provide additional `param:*` dimensions, explained in the
+[parameter overrides section](runner_outputs.html#inspect-and-filter-parameter-overrides).
+Output identity is available as `output` in both APIs. These dimensions can be
+used alongside the model dimensions for facets and colours.
+
+For worked examples, continue with the
+[DAVE panels and colours](plotting_dave.html#choose-the-panels-and-colours) or
+[runner simulation comparisons](runner_outputs.html#plot-and-compare-simulations).

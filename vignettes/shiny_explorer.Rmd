@@ -74,6 +74,9 @@ dave_shiny("/path/to/dave", stale_threshold_secs = 30, refresh_interval = 0)
 
 ## Choose plot controls
 
+The [output dimensions guide](output_dimensions.html) explains how model
+identifiers and measured columns become facets, colours, and separate lines.
+
 Choose data columns, one or more facets, a colour dimension, and shared or
 independent y-axis scales. **Source** distinguishes repositories, while patch,
 stand, PFT, individual, and soil layer dimensions are offered when present.

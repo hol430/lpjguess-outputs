@@ -51,6 +51,9 @@
     prefixes <- c(layer = "Layer", patch = "Patch", stand = "Stand",
                   indiv = "Individual")
     values <- as.character(values)
+    if (startsWith(dimension, "param:")) {
+        values[is.na(values)] <- "Not overridden"
+    }
     if (!(dimension %in% names(prefixes))) {
         return(values)
     }
@@ -150,7 +153,9 @@
     pairs$variable_name <- vapply(seq_len(nrow(pairs)), function(i) {
         output <- pairs$output[[i]]
         variable <- pairs$variable[[i]]
-        if (is.null(metadata[[output]])) variable else
+        if (is.null(metadata[[output]])) variable else if (
+            variable == "monthly" && metadata[[output]]@temporal_resolution == "monthly"
+        ) metadata[[output]]@name else
             get_display_label(output, variable)
     }, character(1))
     pairs$units <- vapply(seq_len(nrow(pairs)), function(i) {
@@ -239,7 +244,7 @@
     # Extract subset of table which contains only variable == columns.
     dt <- dt[variable %in% vars]
     label_maps <- .get_plot_label_maps(dt, facet, colour)
-    series_cols <- intersect(c("repo", "site", "output", "variable", "Lon",
+    series_cols <- intersect(c("run_id", "repo", "site", "output", "variable", "Lon",
                                "Lat", "stand", "patch", "pft", "indiv",
                                "layer"), names(dt))
     dt[, .plot_series := .GRP, by = series_cols]
@@ -261,7 +266,8 @@
             labels$variable <- .lookup_plot_labels(labels$variable,
                                                   label_maps$variable)
         }
-        for (dimension in intersect(c("layer", "patch", "stand", "indiv"),
+        for (dimension in intersect(c("layer", "patch", "stand", "indiv",
+                                      names(labels)[startsWith(names(labels), "param:")]),
                                     names(labels))) {
             labels[[dimension]] <- if (dimension == "layer" &&
                                      !is.null(layer_labels)) {
@@ -276,6 +282,8 @@
 
     colour_titles <- c(variable = "Column", site = "Site", output = "Output",
                        repo = "Source",
+                       simulation = "Simulation", instruction_file = "Instruction file",
+                       run_id = "Run",
                        patch = "Patch", stand = "Stand", pft = "PFT",
                        indiv = "Individual", layer = "Layer")
     scales <- if (common_yaxis) "fixed" else "free_y"
@@ -283,10 +291,12 @@
                                             color = as.factor(!!ggplot2::sym(colour)),
                                             group = .plot_series)) +
         ggplot2::geom_line() +
-        ggplot2::facet_wrap(facet, scales = scales, labeller = .facet_label) +
+        ggplot2::facet_wrap(ggplot2::vars(!!!lapply(facet, ggplot2::sym)),
+                            scales = scales, labeller = .facet_label) +
         ggplot2::labs(x = "Date",
                       y = NULL,
-                      color = unname(colour_titles[[colour]])) +
+                      color = if (colour %in% names(colour_titles))
+                          unname(colour_titles[[colour]]) else sub("^param:", "", colour)) +
         ggplot2::theme_bw()
 
     colour_labels <- if (colour %in% c("output", "variable")) {

@@ -72,6 +72,9 @@ With `columns = NULL`, `plot_dave()` selects column names shared by every reques
 
 ## Choose the panels and colours
 
+See [Understanding output dimensions](output_dimensions.html) for the shared
+explanation of measured columns, model identifiers, facets, and colours.
+
 `facet` accepts one or more dimensions; `colour` accepts one. Available choices are `"column"`, `"site"`, `"output"`, `"patch"`, `"stand"`, `"pft"`, `"indiv"`, and `"layer"`. Use dimensions that exist in the files you selected. `"column"` means a data column in the original output file.
 
 For example, put each LAI column (ie each PFT) in its own panel and compare sites by colour:

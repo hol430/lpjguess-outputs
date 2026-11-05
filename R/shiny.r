@@ -124,6 +124,14 @@
                    Source = data$repo, Site = data$site, Output = data$output,
                    Column = labels$pairs$label[pairs],
                    Value = format(data$value, digits = 10, trim = TRUE))
+    fields <- fields[!vapply(fields, is.null, logical(1))]
+    for (dimension in intersect(c("simulation", "instruction_file", "run_id"), names(data))) {
+        title <- c(simulation = "Simulation", instruction_file = "Instruction file", run_id = "Run")
+        fields[[title[[dimension]]]] <- data[[dimension]]
+    }
+    for (dimension in names(data)[startsWith(names(data), "param:")]) {
+        fields[[sub("^param:", "", dimension)]] <- .plot_dimension_labels(data[[dimension]], dimension)
+    }
     dimensions <- c(Lon = "Longitude", Lat = "Latitude", stand = "Stand",
                     patch = "Patch", pft = "PFT", indiv = "Individual",
                     layer = "Soil layer (file index)")
@@ -133,7 +141,7 @@
     # Escape file paths and raw column names: Plotly hover text accepts HTML.
     lines <- lapply(names(fields), function(name) {
         values <- fields[[name]]
-        ifelse(is.na(values), "", paste0(name, ": ", htmltools::htmlEscape(as.character(values))))
+        ifelse(is.na(values), "", paste0(htmltools::htmlEscape(name), ": ", htmltools::htmlEscape(as.character(values))))
     })
     data$.dave_tooltip <- Reduce(function(text, line) {
         paste0(text, ifelse(nzchar(line), paste0("<br>", line), ""))

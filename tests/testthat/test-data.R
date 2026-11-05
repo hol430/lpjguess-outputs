@@ -61,10 +61,10 @@ test_that("daily dates use zero-based days including leap days and year end", {
     expect_identical(result$value, seq_len(5L))
 })
 
-test_that("subdaily dates use one-based days and hour timesteps", {
+test_that("subdaily dates use zero-based days and hour timesteps", {
     withr::local_envvar(c(TZ = "UTC"))
     dt <- data.table::data.table(Lon = 150, Lat = -33, Year = 2024L,
-        Day = c(60L, 1L, 1L, 1L), timestep = c(12L, 23L, 0L, 23L),
+        Day = c(59L, 0L, 0L, 0L), timestep = c(12L, 23L, 0L, 23L),
         indiv = c(1L, 1L, 1L, 2L), value = seq_len(4L))
     result <- .calc_date(dt)
     expect_equal(result$Date, as.POSIXct(c("2024-02-29 12:00:00",
@@ -145,7 +145,7 @@ test_that("heterogeneous output dimensions are filled without losing rows", {
 test_that("subdaily files are read without melting timestamps", {
     repo <- local_dave_repo()
     write_dave_output(repo, data.frame(Lon = 150, Lat = -33, Year = 2024L,
-        Day = 1L, timestep = c(0L, 12L), MRS = c(2, 4)))
+        Day = 0L, timestep = c(0L, 12L), MRS = c(2, 4)))
     result <- read_dave(repo, "dave_lai", "TestSite")
     expect_equal(result$Date, as.POSIXct(c("2024-01-01 00:00:00",
                                           "2024-01-01 12:00:00"), tz = ""))

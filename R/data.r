@@ -39,7 +39,7 @@
     # Multiple layers, patches, or individuals can share one timestamp.
     if ("Year" %in% cols && "Day" %in% cols && "timestep" %in% cols) {
         dates <- unique(dt[, .(Year, Day, timestep)])
-        dates[, Date := as.POSIXct(paste(Year, Day, timestep),
+        dates[, Date := as.POSIXct(paste(Year, Day + 1, timestep),
                                   format = "%Y %j %H")]
         dt[, Date := dates[dt, on = .(Year, Day, timestep), Date]]
         dt$Year <- NULL
@@ -68,13 +68,8 @@
     return(dt)
 }
 
-.read_dave_single <- function(repo, output, site) {
-    out_file <- .get_out_file(repo, output, site)
-    dt <- data.table::fread(out_file)
-
+.long_output <- function(dt) {
     dt <- .calc_date(dt)
-
-    # Pivot to long format.
     data_cols <- setdiff(names(dt), .identity_cols)
     id_cols <- intersect(.identity_cols, names(dt))
 
@@ -82,6 +77,12 @@
                            measure.vars = data_cols,
                            variable.name = "variable", value.name = "value")
 
+    dt
+}
+
+.read_dave_single <- function(repo, output, site) {
+    out_file <- .get_out_file(repo, output, site)
+    dt <- .long_output(data.table::fread(out_file))
     dt$repo <- repo
     dt$output <- output
     dt$site <- site

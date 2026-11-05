@@ -1,6 +1,7 @@
 # lpjguessOutput
 
-Read and plot LPJ-GUESS DAVE outputs from OzFlux site simulations.
+Read, plot, and explore LPJ-GUESS outputs from DAVE OzFlux site simulations
+and simulations by `lpjguessRunner`.
 
 ## Installation
 
@@ -12,14 +13,15 @@ install.packages(c("shiny", "plotly"))  # If you want the Shiny explorer
 remotes::install_github("hol430/lpjguess-outputs@*release")
 ```
 
+Runner support requires the optional
+[`lpjguessRunner` package](https://github.com/hie-dave/lpjg-gui/tree/master/r).
+The existing DAVE APIs can be used independently.
+
 Run the same command again to update to a newer release.
 
 ## Documentation
 
-Read the [plotting guide](vignettes/plotting_dave.Rmd) and
-[Shiny explorer guide](vignettes/shiny_explorer.Rmd).
-
-To browse the HTML vignettes in R, run:
+Consult the package vignettes:
 
 ```r
 browseVignettes("lpjguessOutput")
