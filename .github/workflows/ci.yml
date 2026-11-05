@@ -48,6 +48,7 @@ jobs:
           extra-packages: |
             roxygen2@${{ steps.roxygen.outputs.version }}
             any::rcmdcheck
+            lpjguessRunner=url::https://github.com/hie-dave/lpjg-gui/releases/download/r%2Fv0.9.1/lpjguessRunner_0.9.1_linux-x64.tar.gz
 
       - name: Verify release version
         if: startsWith(github.ref, 'refs/tags/')
