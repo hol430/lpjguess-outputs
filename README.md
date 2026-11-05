@@ -18,9 +18,10 @@ remotes::install_github(
 
 Runner support requires the optional
 [`lpjguessRunner` package](https://github.com/hie-dave/lpjg-gui/tree/master/r).
-The existing DAVE APIs can be used independently.
 
-Run the same command again to update to a newer release.
+Run the same command again to update to a newer release. The [releases
+page](https://github.com/hol430/lpjguess-outputs/releases) lists all available
+versions and their corresponding release notes.
 
 ## Basic Usage
 
